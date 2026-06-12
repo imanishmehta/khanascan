@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>KhanaScan · AI Calorie Tracker</title>
+<!-- iOS home-screen app feel -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KhanaScan">
+<meta name="theme-color" content="#234D2C">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23234D2C'/><text x='50' y='66' font-size='48' text-anchor='middle'>🥗</text></svg>">
+<style>
+:root{
+  --ink:#161B14; --forest:#234D2C; --leaf:#3E7C47; --citrus:#D7F75B;
+  --cream:#FBFAF4; --card:#fff; --line:#E7E5DA; --muted:#7A806F;
+  --protein:#E2574C; --carbs:#E8A33D; --fat:#5B8DEF; --bad:#B3261E;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--cream);color:var(--ink);
+  font-family:'Avenir Next','Segoe UI',system-ui,-apple-system,sans-serif;
+  overscroll-behavior-y:none}
+body{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+button{cursor:pointer;font-family:inherit;border:none;background:none;padding:0}
+input,textarea,select{font-family:inherit;font-size:16px}
+.wrap{max-width:480px;margin:0 auto;padding:0 18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.rise{animation:rise .35s ease both}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* header */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 0 6px}
+.logo{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.logo span{color:var(--leaf)}
+.tag{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+
+/* date nav */
+.datenav{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+.datenav b{font-size:14px}
+.navbtn{padding:8px;color:var(--forest);font-size:18px;font-weight:800}
+
+/* hero */
+.hero{background:var(--forest);border-radius:24px;padding:20px 18px;display:flex;gap:18px;align-items:center;
+  box-shadow:0 10px 30px rgba(35,77,44,.25);color:#fff}
+.ringwrap{position:relative;width:124px;height:124px;flex-shrink:0}
+.ringwrap svg{transform:rotate(-90deg)}
+.ringc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ringc .big{font-size:27px;font-weight:800;line-height:1}
+.ringc .small{font-size:9.5px;color:rgba(255,255,255,.7);font-weight:700;letter-spacing:.05em;margin-top:2px}
+.hstats{flex:1;min-width:0}
+.kcalrow{display:flex;align-items:center;gap:6px;margin-bottom:10px;font-weight:700;font-size:14.5px}
+.kcalrow .sub{color:rgba(255,255,255,.6);font-weight:500;font-size:12.5px}
+.mrow{margin-bottom:7px}
+.mlbl{display:flex;justify-content:space-between;font-size:10.5px;color:rgba(255,255,255,.75);font-weight:700;margin-bottom:3px}
+.mtrack{height:5px;border-radius:99px;background:rgba(255,255,255,.15)}
+.mfill{height:100%;border-radius:99px;transition:width .6s ease}
+
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px}
+.section-h{font-size:11.5px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin:18px 0 10px}
+
+/* actions */
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.act{border-radius:18px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  font-weight:800;font-size:13px;border:1.5px solid var(--line);background:var(--card);color:var(--ink)}
+.act .emo{font-size:22px}
+.act.primary{background:var(--citrus);border-color:var(--citrus);box-shadow:0 6px 18px rgba(215,247,91,.5)}
+.act:disabled{opacity:.45}
+
+/* log */
+.entry{display:flex;gap:12px;align-items:center;padding:12px;margin-bottom:10px}
+.entry img,.entry .ph{width:54px;height:54px;border-radius:14px;object-fit:cover;flex-shrink:0}
+.entry .ph{background:var(--cream);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:20px}
+.entry .meta{flex:1;min-width:0}
+.entry .nm{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .sub{font-size:11px;color:var(--muted);font-weight:600}
+.entry .kc{font-weight:800;font-size:14px;white-space:nowrap}
+.entry .kc small{font-size:10.5px;color:var(--muted)}
+.del{padding:6px;color:var(--muted);font-size:15px}
+.empty{text-align:center;padding:34px 18px;border:1.5px dashed var(--line);border-radius:20px;color:var(--muted)}
+.empty b{color:var(--ink);font-size:15px;display:block;margin-bottom:4px}
+
+/* bottom nav */
+.bnav{position:fixed;left:0;right:0;bottom:0;background:rgba(251,250,244,.96);backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);padding:8px 0 calc(10px + env(safe-area-inset-bottom));z-index:40}
+.bnav .wrap{display:flex}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;font-weight:700;color:var(--muted);padding:4px 0}
+.tab .emo{font-size:20px;filter:grayscale(1);opacity:.6}
+.tab.on{color:var(--forest)}
+.tab.on .emo{filter:none;opacity:1}
+
+/* sheets */
+.ov{position:fixed;inset:0;background:rgba(22,27,20,.45);display:flex;align-items:flex-end;z-index:50}
+.sheet{background:var(--card);border-radius:24px 24px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+  width:100%;max-width:480px;margin:0 auto;max-height:85vh;overflow-y:auto}
+.sheet h3{margin:0 0 4px;font-size:17px;font-weight:800}
+.sheet .desc{font-size:13px;color:var(--muted);margin:0 0 12px}
+.fld{margin-bottom:13px}
+.fld label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:5px;letter-spacing:.04em}
+.fld input,.fld select,.fld textarea{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:12px;
+  background:var(--cream);outline:none;font-weight:600;color:var(--ink)}
+.fld textarea{resize:none}
+.btn{width:100%;padding:14px 0;border-radius:16px;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn.green{background:var(--forest);color:#fff}
+.btn.outline{background:transparent;border:1.5px solid var(--line);color:var(--muted)}
+.btn.lime{background:var(--citrus);color:var(--ink)}
+.btn:disabled{opacity:.5}
+.row2{display:flex;gap:10px}
+.row2>*{flex:1}
+.x{position:absolute;right:0;top:0;padding:4px;color:var(--muted);font-size:18px}
+
+/* result card */
+.res-img{width:100%;height:160px;object-fit:cover;border-radius:18px 18px 0 0}
+.res-body{padding:16px}
+.res-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
+.kcal-pill{background:var(--citrus);border-radius:12px;padding:6px 10px;font-weight:800;font-size:15px;white-space:nowrap}
+.it{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.it b{font-weight:600}.it .q{color:var(--muted);font-weight:500}
+.macro3{display:flex;gap:10px;margin-top:12px}
+.macro3>div{flex:1}
+.mb-l{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.mb-t{height:6px;border-radius:99px;background:var(--line)}
+.mb-f{height:100%;border-radius:99px}
+
+/* misc */
+.note{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+.err{background:#FDECEA;border:1px solid #F5C6C0;color:var(--bad);border-radius:14px;padding:10px 14px;
+  font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+.busy{display:flex;align-items:center;gap:12px;padding:16px}
+.spinner{width:20px;height:20px;border:3px solid var(--line);border-top-color:var(--leaf);border-radius:50%;animation:spin 1s linear infinite;flex-shrink:0}
+.chart-card{padding:16px}
+.chart-card h4{margin:0 0 12px;font-size:14px;font-weight:800}
+.legend{font-size:11px;color:var(--muted);font-weight:600;margin-top:8px}
+.stat3{display:flex;gap:10px;margin-top:12px}
+.stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;text-align:center}
+.stat .v{font-size:18px;font-weight:800}
+.stat .l{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-top:2px}
+.coach-tip{display:flex;gap:10px;padding:13px;margin-bottom:10px;align-items:flex-start}
+.coach-tip .emo{font-size:20px}
+.coach-tip p{margin:0;font-size:13.5px;line-height:1.45;font-weight:500}
+.setup{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.setup-card{max-width:420px;width:100%}
+.steps{font-size:13.5px;line-height:1.7;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:14px 0}
+.steps a{color:var(--leaf);font-weight:700}
+.mic-pulse{width:90px;height:90px;border-radius:50%;background:var(--citrus);display:flex;align-items:center;justify-content:center;
+  font-size:38px;margin:18px auto;box-shadow:0 0 0 0 rgba(215,247,91,.6);animation:pulse 1.4s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 22px rgba(215,247,91,0)}100%{box-shadow:0 0 0 0 rgba(215,247,91,0)}}
+.voice-txt{min-height:46px;font-size:15px;font-weight:600;text-align:center;color:var(--ink);padding:0 6px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP SCREEN (first run: API key) ============ -->
+<div id="setupScreen" class="setup hidden">
+  <div class="setup-card rise">
+    <div class="logo" style="font-size:30px;text-align:center">Khana<span>Scan</span></div>
+    <div class="tag" style="text-align:center;margin-bottom:14px">AI Calorie & Macro Tracker</div>
+    <div class="steps">
+      <b>🔑 Free AI key chahiye (1 minute, no card):</b><br>
+      1. Kholo <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a><br>
+      2. Google se sign in karo<br>
+      3. <b>"Create API key"</b> dabao<br>
+      4. Key copy karke neeche paste karo
+    </div>
+    <div class="fld">
+      <label>GEMINI API KEY</label>
+      <input id="setupKey" type="password" placeholder="AIza...">
+    </div>
+    <button class="btn green" onclick="saveKey()">Shuru karein →</button>
+    <p class="note">Key sirf aapke phone mein save hoti hai, kahin bheji nahi jaati.</p>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div id="app" class="hidden">
+  <div class="wrap">
+    <div class="hdr">
+      <div>
+        <div class="logo">Khana<span>Scan</span></div>
+        <div class="tag">AI Calorie Tracker</div>
+      </div>
+      <button class="navbtn" onclick="openSettings()" aria-label="Settings">⚙️</button>
+    </div>
+
+    <!-- HOME PAGE -->
+    <div id="page-home">
+      <div class="datenav">
+        <button class="navbtn" onclick="shiftDay(-1)">‹</button>
+        <b id="dateLbl"></b>
+        <button class="navbtn" id="nextDayBtn" onclick="shiftDay(1)">›</button>
+      </div>
+
+      <div class="hero rise">
+        <div class="ringwrap">
+          <svg width="124" height="124">
+            <circle cx="62" cy="62" r="55" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="11"/>
+            <circle id="ringFill" cx="62" cy="62" r="55" fill="none" stroke="var(--citrus)" stroke-width="11"
+              stroke-linecap="round" stroke-dasharray="345.6" stroke-dashoffset="345.6"
+              style="transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1)"/>
+          </svg>
+          <div class="ringc">
+            <div class="big" id="kcalLeft">0</div>
+            <div class="small">KCAL BACHE</div>
+          </div>
+        </div>
+        <div class="hstats">
+          <div class="kcalrow">🔥 <span id="kcalEaten">0</span>&nbsp;<span class="sub">/ <span id="kcalGoal">2000</span> kcal</span></div>
+          <div class="mrow"><div class="mlbl"><span>Protein</span><span id="pLbl">0/100g</span></div><div class="mtrack"><div class="mfill" id="pBar" style="background:var(--protein);width:0%"></div></div></div>
+          <div class="mrow"><div class="mlbl"><span>Carbs</span><span id="cLbl">0/250g</span></div><div class="mtrack"><div class="mfill" id="cBar" style="background:var(--carbs);width:0%"></div></div></div>
+          <div class="mrow"><div class="mlbl"><span>Fat</span><span id="fLbl">0/65g</span></div><div class="mtrack"><div class="mfill" id="fBar" style="background:var(--fat);width:0%"></div></div></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="act primary" onclick="document.getElementById('camInput').click()"><span class="emo">📸</span>Snap & Track</button>
+        <button class="act" onclick="document.getElementById('labelInput').click()"><span class="emo">🏷️</span>Label / Packet Scan</button>
+        <button class="act" onclick="startVoice()"><span class="emo">🎤</span>Voice Logging</button>
+        <button class="act" onclick="openSheet('textSheet')"><span class="emo">⌨️</span>Type karo</button>
+      </div>
+      <div class="note"><button style="text-decoration:underline;color:var(--muted);font-weight:600;font-size:12px" onclick="document.getElementById('galInput').click()">ya gallery se photo choose karo</button></div>
+
+      <div id="errBox"></div>
+      <div id="busyBox"></div>
+      <div id="resultBox"></div>
+
+      <div class="section-h">Aaj ka khana · <span id="entryCount">0 entries</span></div>
+      <div id="logList"></div>
+    </div>
+
+    <!-- PROGRESS PAGE -->
+    <div id="page-progress" class="hidden">
+      <div class="section-h" style="margin-top:8px">Last 7 days · Calories</div>
+      <div class="card chart-card rise"><div id="calChart"></div>
+        <div class="legend">🟩 goal ke andar &nbsp; 🟧 goal se zyada &nbsp; — goal line</div></div>
+
+      <div class="stat3" id="weekStats"></div>
+
+      <div class="section-h">Weight progress</div>
+      <div class="card chart-card rise">
+        <div id="wChart"></div>
+        <button class="btn lime" style="margin-top:12px" onclick="openSheet('weightSheet')">⚖️ Aaj ka weight add karo</button>
+      </div>
+
+      <div class="section-h">Macro trend (7 din avg)</div>
+      <div class="card chart-card rise" id="macroTrend"></div>
+
+      <button class="btn outline" style="margin-top:16px" onclick="exportData()">⬇️ Data export (backup JSON)</button>
+    </div>
+
+    <!-- COACH PAGE -->
+    <div id="page-coach" class="hidden">
+      <div class="section-h" style="margin-top:8px">Smart AI Coach 🤖</div>
+      <p style="font-size:13.5px;color:var(--muted);margin:0 0 14px">Aapki meal history aur goals dekh kar personalized tips — bilkul aapke diet ke hisaab se.</p>
+      <button class="btn green" id="coachBtn" onclick="getCoach()">✨ Aaj ki coaching lo</button>
+      <div id="coachBox" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- bottom nav -->
+  <div class="bnav"><div class="wrap">
+    <button class="tab on" id="tab-home" onclick="go('home')"><span class="emo">🏠</span>Home</button>
+    <button class="tab" id="tab-progress" onclick="go('progress')"><span class="emo">📊</span>Progress</button>
+    <button class="tab" id="tab-coach" onclick="go('coach')"><span class="emo">🤖</span>Coach</button>
+  </div></div>
+</div>
+
+<!-- hidden file inputs -->
+<input id="camInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="onImage(this,'meal')">
+<input id="galInput" type="file" accept="image/*" class="hidden" onchange="onImage(this,'meal')">
+<input id="labelInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="onImage(this,'label')">
+
+<!-- TEXT SHEET -->
+<div id="textSheet" class="ov hidden" onclick="closeSheet(event,'textSheet')">
+  <div class="sheet rise" onclick="event.stopPropagation()">
+    <h3>Khana likh kar batao ⌨️</h3>
+    <p class="desc">Jaise: "2 roti, 1 katori dal, salad" ya "chicken biryani full plate"</p>
+    <div class="fld"><textarea id="textIn" rows="3" placeholder="Yahan likho…"></textarea></div>
+    <button class="btn green" onclick="submitText()">Calories nikalo</button>
+  </div>
+</div>
+
+<!-- VOICE SHEET -->
+<div id="voiceSheet" class="ov hidden" onclick="stopVoice()">
+  <div class="sheet rise" onclick="event.stopPropagation()" style="text-align:center">
+    <h3>Bol kar batao 🎤</h3>
+    <p class="desc">Mic on hai — apna khana bolo, jaise "do anda aur ek toast"</p>
+    <div class="mic-pulse">🎤</div>
+    <div class="voice-txt" id="voiceTxt">Sun raha hoon…</div>
+    <div class="row2" style="margin-top:14px">
+      <button class="btn outline" onclick="stopVoice()">Cancel</button>
+      <button class="btn green" id="voiceDone" onclick="finishVoice()">✓ Ho gaya</button>
+    </div>
+  </div>
+</div>
+
+<!-- WEIGHT SHEET -->
+<div id="weightSheet" class="ov hidden" onclick="closeSheet(event,'weightSheet')">
+  <div class="sheet rise" onclick="event.stopPropagation()">
+    <h3>Weight log karo ⚖️</h3>
+    <div class="fld"><label>AAJ KA WEIGHT (KG)</label><input id="wIn" type="number" inputmode="decimal" placeholder="70.5"></div>
+    <button class="btn green" onclick="saveWeight()">Save karein</button>
+  </div>
+</div>
+
+<!-- SETTINGS SHEET -->
+<div id="setSheet" class="ov hidden" onclick="closeSheet(event,'setSheet')">
+  <div class="sheet rise" onclick="event.stopPropagation()" style="position:relative">
+    <button class="x" style="position:absolute;right:16px;top:16px" onclick="document.getElementById('setSheet').classList.add('hidden')">✕</button>
+    <h3>Goals & Settings 🎯</h3>
+
+    <div class="section-h" style="margin-top:14px">🧮 Nutrition Calculator (auto goal)</div>
+    <p class="desc">Apni details bharo — BMR/TDEE se perfect calorie goal nikal dega.</p>
+    <div class="row2">
+      <div class="fld"><label>AGE</label><input id="ncAge" type="number" inputmode="numeric" placeholder="25"></div>
+      <div class="fld"><label>GENDER</label><select id="ncSex"><option value="m">Male</option><option value="f">Female</option></select></div>
+    </div>
+    <div class="row2">
+      <div class="fld"><label>HEIGHT (CM)</label><input id="ncH" type="number" inputmode="numeric" placeholder="170"></div>
+      <div class="fld"><label>WEIGHT (KG)</label><input id="ncW" type="number" inputmode="decimal" placeholder="70"></div>
+    </div>
+    <div class="fld"><label>ACTIVITY LEVEL</label>
+      <select id="ncAct">
+        <option value="1.2">Sedentary (desk job, no exercise)</option>
+        <option value="1.375">Light (1-3 din workout)</option>
+        <option value="1.55" selected>Moderate (3-5 din workout)</option>
+        <option value="1.725">Active (6-7 din workout)</option>
+      </select></div>
+    <div class="fld"><label>GOAL</label>
+      <select id="ncGoal">
+        <option value="-500">Weight loss (~0.5 kg/week deficit)</option>
+        <option value="-250">Slow loss (~0.25 kg/week)</option>
+        <option value="0" selected>Maintain</option>
+        <option value="300">Muscle gain (+300 kcal surplus)</option>
+      </select></div>
+    <button class="btn lime" onclick="calcTDEE()">Calculate karo</button>
+    <div id="ncOut" class="note" style="margin:10px 0 4px"></div>
+
+    <div class="section-h">✏️ Manual goals</div>
+    <div class="fld"><label>CALORIE GOAL (KCAL)</label><input id="sCal" type="number" inputmode="numeric"></div>
+    <div class="row2">
+      <div class="fld"><label>PROTEIN (G)</label><input id="sP" type="number" inputmode="numeric"></div>
+      <div class="fld"><label>CARBS (G)</label><input id="sC" type="number" inputmode="numeric"></div>
+      <div class="fld"><label>FAT (G)</label><input id="sF" type="number" inputmode="numeric"></div>
+    </div>
+
+    <div class="section-h">🔑 API Key</div>
+    <div class="fld"><input id="sKey" type="password" placeholder="Gemini API key"></div>
+
+    <button class="btn green" onclick="saveSettings()">Save karein</button>
+  </div>
+</div>
+
+<script>
+/* ================= STATE & STORAGE ================= */
+const LS = {
+  get(k,d){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d} },
+  set(k,v){ try{localStorage.setItem(k,JSON.stringify(v))}catch(e){alert('Storage full! Purani entries delete karo ya data export karke clear karo.')} }
+};
+let settings = LS.get('ks:settings', {calGoal:2000,p:100,c:250,f:65});
+let apiKey   = LS.get('ks:key', '');
+let curDate  = new Date();
+let pending  = null;   // AI result waiting for confirm
+let pendingImg = null; // thumbnail base64
+
+const dkey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const isToday = d => dkey(d)===dkey(new Date());
+const getLog = d => LS.get('ks:log:'+dkey(d), []);
+const setLog = (d,l) => LS.set('ks:log:'+dkey(d), l);
+
+/* ================= INIT ================= */
+function boot(){
+  if(!apiKey){ document.getElementById('setupScreen').classList.remove('hidden'); }
+  else { document.getElementById('app').classList.remove('hidden'); render(); }
+}
+function saveKey(){
+  const k=document.getElementById('setupKey').value.trim();
+  if(!k){alert('Pehle key paste karo');return}
+  apiKey=k; LS.set('ks:key',k);
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  render();
+}
+
+/* ================= NAV ================= */
+function go(p){
+  ['home','progress','coach'].forEach(x=>{
+    document.getElementById('page-'+x).classList.toggle('hidden', x!==p);
+    document.getElementById('tab-'+x).classList.toggle('on', x===p);
+  });
+  if(p==='progress') renderCharts();
+}
+function shiftDay(n){
+  if(n>0 && isToday(curDate)) return;
+  curDate = new Date(curDate.getTime()+n*86400000);
+  render();
+}
+
+/* ================= RENDER HOME ================= */
+function render(){
+  const log = getLog(curDate);
+  document.getElementById('dateLbl').textContent = isToday(curDate) ? 'Aaj · Today'
+    : curDate.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  document.getElementById('nextDayBtn').style.opacity = isToday(curDate)?'.25':'1';
+
+  const t = log.reduce((a,e)=>({cal:a.cal+e.total.calories,p:a.p+e.total.protein_g,c:a.c+e.total.carbs_g,f:a.f+e.total.fat_g}),{cal:0,p:0,c:0,f:0});
+  const left = Math.max(0, settings.calGoal - t.cal);
+  document.getElementById('kcalLeft').textContent = Math.round(left);
+  document.getElementById('kcalEaten').textContent = Math.round(t.cal);
+  document.getElementById('kcalGoal').textContent = settings.calGoal;
+  const circ = 2*Math.PI*55;
+  document.getElementById('ringFill').style.strokeDashoffset = circ*(1-Math.min(1,t.cal/settings.calGoal));
+  [['p',t.p,settings.p],['c',t.c,settings.c],['f',t.f,settings.f]].forEach(([id,v,g])=>{
+    document.getElementById(id+'Lbl').textContent = `${Math.round(v)}/${g}g`;
+    document.getElementById(id+'Bar').style.width = Math.min(100,v/g*100)+'%';
+  });
+
+  document.getElementById('entryCount').textContent = `${log.length} ${log.length===1?'entry':'entries'}`;
+  const list = document.getElementById('logList');
+  if(!log.length){
+    list.innerHTML = `<div class="empty"><div style="font-size:24px">✨</div><b>Abhi kuch log nahi hua</b>
+      📸 Snap & Track dabao, ya 🎤 bol kar batao — AI calories nikaal dega.</div>`;
+  } else {
+    list.innerHTML = log.map(e=>`
+      <div class="card entry rise">
+        ${e.img?`<img src="data:image/jpeg;base64,${e.img}" alt="">`:`<div class="ph">${e.src==='voice'?'🎤':e.src==='label'?'🏷️':'⌨️'}</div>`}
+        <div class="meta"><div class="nm">${esc(e.meal_name)}</div>
+          <div class="sub">${e.time} · P ${Math.round(e.total.protein_g)}g · C ${Math.round(e.total.carbs_g)}g · F ${Math.round(e.total.fat_g)}g · ${e.health_score}/10</div></div>
+        <div class="kc">${Math.round(e.total.calories)} <small>kcal</small></div>
+        <button class="del" onclick="delEntry(${e.id})">🗑️</button>
+      </div>`).join('');
+  }
+}
+const esc = s => String(s||'').replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+function delEntry(id){ setLog(curDate, getLog(curDate).filter(e=>e.id!==id)); render(); }
+
+/* ================= GEMINI API ================= */
+async function gemini(parts, maxTokens=1200){
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({contents:[{parts}], generationConfig:{temperature:0.2,maxOutputTokens:maxTokens}})
+  });
+  const d = await res.json();
+  if(d.error) throw new Error(d.error.message||'API error');
+  return (d.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
+}
+function parseJSON(txt){
+  const c = txt.replace(/```json|```/g,'').trim();
+  return JSON.parse(c.slice(c.indexOf('{'), c.lastIndexOf('}')+1));
+}
+const SCHEMA = `Respond with ONLY valid JSON, no markdown, no backticks:
+{"meal_name":"short dish name","items":[{"name":"","quantity":"e.g. 1 bowl","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}],
+"total":{"calories":0,"protein_g":0,"carbs_g":0,"fat_g":0},"health_score":7,"tip":"one short practical tip, max 12 words"}
+Use realistic Indian/international portion sizes. health_score 1-10. If no food found return {"error":"no_food"}.`;
+
+/* ================= IMAGE HANDLING ================= */
+function compress(file, maxDim, q){
+  return new Promise((res,rej)=>{
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = ()=>{
+      const s = Math.min(1, maxDim/Math.max(img.width,img.height));
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(img.width*s); cv.height = Math.round(img.height*s);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      URL.revokeObjectURL(url);
+      res(cv.toDataURL('image/jpeg',q).split(',')[1]);
+    };
+    img.onerror = ()=>{URL.revokeObjectURL(url);rej(new Error('image load fail'))};
+    img.src = url;
+  });
+}
+async function onImage(inp, mode){
+  const f = inp.files?.[0]; inp.value='';
+  if(!f) return;
+  showBusy(true); showErr(null); clearResult();
+  try{
+    const big   = await compress(f, 1100, .85);   // send to AI
+    const thumb = await compress(f, 220, .6);     // store in log (small!)
+    const prompt = mode==='label'
+      ? `This is a photo of a packaged food / nutrition label / barcode side of a packet. Read the label and identify the product. Estimate nutrition for ONE typical serving (state the serving in quantity). ${SCHEMA}`
+      : `Analyze the food in this photo as a nutritionist. ${SCHEMA}`;
+    const out = parseJSON(await gemini([
+      {inline_data:{mime_type:'image/jpeg', data: big}},
+      {text: prompt}
+    ]));
+    if(out.error){ showErr('Photo mein khana/label nahi mila 🍽️ Dubara try karo.'); }
+    else { pending = out; pending.src = mode==='label'?'label':'photo'; pendingImg = thumb; showResult(); }
+  }catch(e){ console.error(e); showErr(apiErrMsg(e)); }
+  showBusy(false);
+}
+
+/* ================= TEXT & VOICE ================= */
+function submitText(){
+  const t = document.getElementById('textIn').value.trim();
+  if(!t) return;
+  document.getElementById('textSheet').classList.add('hidden');
+  document.getElementById('textIn').value='';
+  analyzeText(t,'text');
+}
+async function analyzeText(t, src){
+  showBusy(true); showErr(null); clearResult();
+  try{
+    const out = parseJSON(await gemini([{text:`Food description from user (may be Hindi/Hinglish/English): "${t}". ${SCHEMA}`}]));
+    if(out.error){ showErr('Khana samajh nahi aaya, thoda detail mein batao.'); }
+    else { pending = out; pending.src = src; pendingImg = null; showResult(); }
+  }catch(e){ console.error(e); showErr(apiErrMsg(e)); }
+  showBusy(false);
+}
+
+let rec=null, voiceFinal='';
+function startVoice(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ showErr('Is browser mein voice support nahi hai — "Type karo" use karo.'); return; }
+  voiceFinal='';
+  document.getElementById('voiceTxt').textContent='Sun raha hoon…';
+  document.getElementById('voiceSheet').classList.remove('hidden');
+  rec = new SR();
+  rec.lang='hi-IN'; rec.continuous=true; rec.interimResults=true;
+  rec.onresult = e=>{
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal) voiceFinal += e.results[i][0].transcript+' ';
+      else interim += e.results[i][0].transcript;
+    }
+    document.getElementById('voiceTxt').textContent = (voiceFinal+interim)||'Sun raha hoon…';
+  };
+  rec.onerror = ev=>{ if(ev.error!=='no-speech'){ stopVoice(); showErr('Mic error: '+ev.error+'. Mic permission check karo.'); } };
+  try{ rec.start(); }catch(e){}
+}
+function stopVoice(){ try{rec&&rec.stop()}catch(e){} document.getElementById('voiceSheet').classList.add('hidden'); }
+function finishVoice(){
+  try{rec&&rec.stop()}catch(e){}
+  document.getElementById('voiceSheet').classList.add('hidden');
+  const t = (voiceFinal||document.getElementById('voiceTxt').textContent||'').trim();
+  if(t && t!=='Sun raha hoon…') analyzeText(t,'voice');
+}
+
+/* ================= RESULT UI ================= */
+function showBusy(on){
+  document.getElementById('busyBox').innerHTML = on
+    ? `<div class="card busy rise" style="margin-top:12px"><div class="spinner"></div>
+       <div><b style="font-size:14px">AI analyze kar raha hai…</b><div style="font-size:12px;color:var(--muted)">Calories aur macros nikal rahe hain</div></div></div>` : '';
+}
+function showErr(msg){
+  document.getElementById('errBox').innerHTML = msg
+    ? `<div class="err rise">${esc(msg)} <button onclick="showErr(null)" style="color:var(--bad);font-size:15px">✕</button></div>` : '';
+}
+function apiErrMsg(e){
+  const m = String(e.message||'');
+  if(m.includes('API key')||m.includes('API_KEY')) return 'API key galat hai — Settings ⚙️ mein sahi key daalo.';
+  if(m.includes('quota')||m.includes('429')) return 'Free quota khatam (thodi der baad try karo) ⏳';
+  return 'Analysis fail ho gaya — internet check karke dubara try karo.';
+}
+function clearResult(){ pending=null; pendingImg=null; document.getElementById('resultBox').innerHTML=''; }
+function showResult(){
+  const r = pending;
+  document.getElementById('resultBox').innerHTML = `
+  <div class="card rise" style="margin-top:12px;overflow:hidden">
+    ${pendingImg?`<img class="res-img" src="data:image/jpeg;base64,${pendingImg}">`:''}
+    <div class="res-body">
+      <div class="res-top">
+        <div><div style="font-weight:800;font-size:17px">${esc(r.meal_name)}</div>
+        <div style="font-size:12px;color:var(--muted);font-weight:600">Health score ${r.health_score}/10 · ${esc(r.tip)}</div></div>
+        <div class="kcal-pill">${Math.round(r.total.calories)} kcal</div>
+      </div>
+      ${(r.items||[]).map(it=>`<div class="it"><span><b>${esc(it.name)}</b> <span class="q">· ${esc(it.quantity)}</span></span><b>${Math.round(it.calories)} kcal</b></div>`).join('')}
+      <div class="macro3">
+        ${[['PROTEIN',r.total.protein_g,settings.p,'var(--protein)'],['CARBS',r.total.carbs_g,settings.c,'var(--carbs)'],['FAT',r.total.fat_g,settings.f,'var(--fat)']]
+          .map(([l,v,g,col])=>`<div><div class="mb-l"><span>${l}</span><span>${Math.round(v)}/${g}g</span></div>
+          <div class="mb-t"><div class="mb-f" style="background:${col};width:${Math.min(100,v/g*100)}%"></div></div></div>`).join('')}
+      </div>
+      <div class="row2" style="margin-top:16px">
+        <button class="btn outline" onclick="clearResult()">Cancel</button>
+        <button class="btn green" style="flex:2" onclick="confirmAdd()">＋ Log mein add karo</button>
+      </div>
+    </div>
+  </div>`;
+}
+function confirmAdd(){
+  const log = getLog(curDate);
+  log.unshift({...pending, id:Date.now(), img:pendingImg,
+    time:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})});
+  setLog(curDate, log);
+  clearResult(); render();
+}
+
+/* ================= SHEETS ================= */
+function openSheet(id){ document.getElementById(id).classList.remove('hidden'); }
+function closeSheet(ev,id){ if(ev.target===ev.currentTarget) document.getElementById(id).classList.add('hidden'); }
+
+/* ================= SETTINGS + TDEE ================= */
+function openSettings(){
+  document.getElementById('sCal').value=settings.calGoal;
+  document.getElementById('sP').value=settings.p;
+  document.getElementById('sC').value=settings.c;
+  document.getElementById('sF').value=settings.f;
+  document.getElementById('sKey').value=apiKey;
+  openSheet('setSheet');
+}
+function calcTDEE(){
+  const age=+document.getElementById('ncAge').value, sex=document.getElementById('ncSex').value,
+        h=+document.getElementById('ncH').value, w=+document.getElementById('ncW').value,
+        act=+document.getElementById('ncAct').value, adj=+document.getElementById('ncGoal').value;
+  if(!age||!h||!w){document.getElementById('ncOut').textContent='Pehle age, height, weight bharo';return}
+  const bmr = 10*w + 6.25*h - 5*age + (sex==='m'?5:-161);          // Mifflin-St Jeor
+  const tdee = bmr*act, target = Math.max(1200, Math.round((tdee+adj)/10)*10);
+  const p = Math.round(w*1.8), f = Math.round(target*0.28/9), c = Math.round((target-p*4-f*9)/4);
+  document.getElementById('sCal').value=target;
+  document.getElementById('sP').value=p; document.getElementById('sC').value=Math.max(0,c); document.getElementById('sF').value=f;
+  document.getElementById('ncOut').innerHTML=`BMR <b>${Math.round(bmr)}</b> · TDEE <b>${Math.round(tdee)}</b> → Goal set: <b>${target} kcal</b> ✅ (neeche save karo)`;
+}
+function saveSettings(){
+  settings = {
+    calGoal: Math.max(800,+document.getElementById('sCal').value||2000),
+    p: +document.getElementById('sP').value||100,
+    c: +document.getElementById('sC').value||250,
+    f: +document.getElementById('sF').value||65 };
+  LS.set('ks:settings',settings);
+  const k=document.getElementById('sKey').value.trim();
+  if(k){apiKey=k;LS.set('ks:key',k)}
+  document.getElementById('setSheet').classList.add('hidden');
+  render();
+}
+
+/* ================= WEIGHT ================= */
+function saveWeight(){
+  const w=+document.getElementById('wIn').value;
+  if(!w){return}
+  const arr = LS.get('ks:weights',[]).filter(x=>x.d!==dkey(new Date()));
+  arr.push({d:dkey(new Date()), w});
+  arr.sort((a,b)=>a.d<b.d?-1:1);
+  LS.set('ks:weights',arr.slice(-90));
+  document.getElementById('weightSheet').classList.add('hidden');
+  document.getElementById('wIn').value='';
+  renderCharts();
+}
+
+/* ================= CHARTS (SVG) ================= */
+function last7(){
+  const out=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(Date.now()-i*86400000);
+    const log=getLog(d);
+    const t=log.reduce((a,e)=>({cal:a.cal+e.total.calories,p:a.p+e.total.protein_g,c:a.c+e.total.carbs_g,f:a.f+e.total.fat_g}),{cal:0,p:0,c:0,f:0});
+    out.push({lbl:d.toLocaleDateString('en-IN',{weekday:'short'}).slice(0,2), ...t});
+  }
+  return out;
+}
+function renderCharts(){
+  const days=last7(), W=380,H=170,pad=26;
+  const maxV=Math.max(settings.calGoal*1.2, ...days.map(d=>d.cal), 100);
+  const bw=(W-pad*2)/7*0.55, gap=(W-pad*2)/7;
+  const gy=H-18-(settings.calGoal/maxV)*(H-40);
+  let bars=days.map((d,i)=>{
+    const h=(d.cal/maxV)*(H-40), x=pad+i*gap+(gap-bw)/2, y=H-18-h;
+    const col=d.cal>settings.calGoal?'var(--carbs)':'var(--leaf)';
+    return `<rect x="${x}" y="${y}" width="${bw}" height="${Math.max(2,h)}" rx="5" fill="${col}"/>
+      <text x="${x+bw/2}" y="${H-4}" font-size="9.5" text-anchor="middle" fill="var(--muted)" font-weight="700">${d.lbl}</text>
+      ${d.cal>0?`<text x="${x+bw/2}" y="${y-4}" font-size="8.5" text-anchor="middle" fill="var(--muted)" font-weight="700">${Math.round(d.cal)}</text>`:''}`;
+  }).join('');
+  document.getElementById('calChart').innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
+      <line x1="${pad}" x2="${W-pad}" y1="${gy}" y2="${gy}" stroke="var(--forest)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="${W-pad}" y="${gy-5}" font-size="9" text-anchor="end" fill="var(--forest)" font-weight="800">GOAL ${settings.calGoal}</text>
+      ${bars}</svg>`;
+
+  // week stats
+  const eaten=days.filter(d=>d.cal>0);
+  const avg = eaten.length? Math.round(eaten.reduce((a,d)=>a+d.cal,0)/eaten.length):0;
+  const within = days.filter(d=>d.cal>0&&d.cal<=settings.calGoal).length;
+  const deficit = eaten.length? Math.round(eaten.reduce((a,d)=>a+(settings.calGoal-d.cal),0)):0;
+  document.getElementById('weekStats').innerHTML = `
+    <div class="stat rise"><div class="v">${avg}</div><div class="l">avg kcal/din</div></div>
+    <div class="stat rise"><div class="v">${within}/7</div><div class="l">goal ke andar</div></div>
+    <div class="stat rise"><div class="v" style="color:${deficit>=0?'var(--leaf)':'var(--bad)'}">${deficit>=0?'−':'+'}${Math.abs(deficit)}</div><div class="l">weekly ${deficit>=0?'deficit':'surplus'}</div></div>`;
+
+  // weight chart
+  const ws = LS.get('ks:weights',[]);
+  const wc = document.getElementById('wChart');
+  if(ws.length<2){ wc.innerHTML=`<div class="note" style="margin:6px 0">${ws.length===1?`Abhi 1 entry hai (${ws[0].w} kg) — kal phir add karo, chart ban jayega 📈`:'Weight entries add karo, trend yahan dikhega 📈'}</div>`; }
+  else{
+    const pts=ws.slice(-30), mn=Math.min(...pts.map(p=>p.w))-0.5, mx=Math.max(...pts.map(p=>p.w))+0.5;
+    const X=i=>pad+(i/(pts.length-1))*(W-pad*2), Y=v=>14+(1-(v-mn)/(mx-mn))*(H-44);
+    const path=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.w).toFixed(1)}`).join(' ');
+    wc.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%">
+      <path d="${path}" fill="none" stroke="var(--leaf)" stroke-width="2.5" stroke-linecap="round"/>
+      ${pts.map((p,i)=>`<circle cx="${X(i)}" cy="${Y(p.w)}" r="3.5" fill="var(--forest)"/>`).join('')}
+      <text x="${pad}" y="${H-4}" font-size="9.5" fill="var(--muted)" font-weight="700">${pts[0].d.slice(5)}</text>
+      <text x="${W-pad}" y="${H-4}" font-size="9.5" text-anchor="end" fill="var(--muted)" font-weight="700">${pts[pts.length-1].d.slice(5)} · ${pts[pts.length-1].w} kg</text>
+    </svg>
+    <div class="legend">Change: <b style="color:var(--forest)">${(pts[pts.length-1].w-pts[0].w).toFixed(1)} kg</b></div>`;
+  }
+
+  // macro trend
+  const ap=eaten.length?eaten.reduce((a,d)=>a+d.p,0)/eaten.length:0,
+        ac=eaten.length?eaten.reduce((a,d)=>a+d.c,0)/eaten.length:0,
+        af=eaten.length?eaten.reduce((a,d)=>a+d.f,0)/eaten.length:0;
+  document.getElementById('macroTrend').innerHTML =
+    [['Protein',ap,settings.p,'var(--protein)'],['Carbs',ac,settings.c,'var(--carbs)'],['Fat',af,settings.f,'var(--fat)']]
+    .map(([l,v,g,col])=>`<div class="mrow" style="margin-bottom:10px">
+      <div class="mb-l"><span style="color:var(--ink)">${l} (avg)</span><span>${Math.round(v)}/${g}g</span></div>
+      <div class="mb-t"><div class="mb-f" style="background:${col};width:${Math.min(100,v/g*100)}%"></div></div></div>`).join('');
+}
+
+/* ================= AI COACH ================= */
+async function getCoach(){
+  const btn=document.getElementById('coachBtn'); btn.disabled=true; btn.textContent='Coach soch raha hai… 🤔';
+  const box=document.getElementById('coachBox'); box.innerHTML='';
+  try{
+    const days=last7().map((d,i)=>`Day${i+1}: ${Math.round(d.cal)}kcal P${Math.round(d.p)} C${Math.round(d.c)} F${Math.round(d.f)}`).join('; ');
+    const today=getLog(new Date()).map(e=>e.meal_name).join(', ')||'kuch nahi';
+    const out=parseJSON(await gemini([{text:
+`You are a friendly nutrition coach. User goals: ${settings.calGoal} kcal, P ${settings.p}g, C ${settings.c}g, F ${settings.f}g daily.
+Last 7 days: ${days}. Today eaten: ${today}.
+Give 3 short personalized actionable tips in Hinglish (Hindi+English mix, casual friendly tone, each max 22 words).
+Respond ONLY JSON: {"tips":[{"emoji":"🥗","text":"..."},{"emoji":"💧","text":"..."},{"emoji":"🏃","text":"..."}]}`}], 800));
+    box.innerHTML=(out.tips||[]).map(t=>`<div class="card coach-tip rise"><span class="emo">${esc(t.emoji)}</span><p>${esc(t.text)}</p></div>`).join('');
+  }catch(e){ box.innerHTML=`<div class="err">${esc(apiErrMsg(e))}</div>`; }
+  btn.disabled=false; btn.textContent='✨ Aaj ki coaching lo';
+}
+
+/* ================= EXPORT ================= */
+function exportData(){
+  const data={settings, weights:LS.get('ks:weights',[]), logs:{}};
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k.startsWith('ks:log:')) data.logs[k.slice(7)]=LS.get(k,[]);
+  }
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download='khanascan-backup.json'; a.click();
+}
+
+boot();
+</script>
+</body>
+</html>
